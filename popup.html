@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OpenClaw</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #1e1e2e;
+      --surface:  #2a2a3e;
+      --border:   #3a3a5c;
+      --accent:   #1a73e8;
+      --accent2:  #34a853;
+      --danger:   #ea4335;
+      --warn:     #fbbc04;
+      --text:     #e8e8f0;
+      --muted:    #888899;
+      --radius:   6px;
+      --gap:      8px;
+    }
+
+    body {
+      width: 380px;
+      min-height: 520px;
+      background: var(--bg);
+      color: var(--text);
+      font: 13px/1.5 'Segoe UI', system-ui, sans-serif;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: var(--gap);
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    header .logo {
+      width: 28px;
+      height: 28px;
+    }
+
+    header h1 { font-size: 15px; font-weight: 700; flex: 1; }
+
+    #status-badge {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+    #status-badge.ready   { border-color: var(--accent2); color: var(--accent2); }
+    #status-badge.error   { border-color: var(--danger);  color: var(--danger);  }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); }
+    .tab-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 12px;
+      padding: 5px 10px;
+      border-bottom: 2px solid transparent;
+      transition: color .15s, border-color .15s;
+    }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .tab-btn:hover  { color: var(--text); }
+
+    .tab-panel { display: none; flex-direction: column; gap: 8px; }
+    .tab-panel.active { display: flex; }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 12px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 12px;
+      cursor: pointer;
+      transition: background .15s, border-color .15s;
+    }
+    .btn:hover   { background: var(--border); }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn.primary:hover { background: #155bb5; border-color: #155bb5; }
+    .btn.danger  { background: var(--danger); border-color: var(--danger); color: #fff; }
+    .btn.success { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-row { display: flex; gap: 6px; flex-wrap: wrap; }
+
+    /* Textarea / input */
+    textarea, input[type="text"] {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font: 12px/1.4 'Consolas', 'Fira Code', monospace;
+      padding: 6px 8px;
+      resize: vertical;
+      outline: none;
+    }
+    textarea:focus, input[type="text"]:focus { border-color: var(--accent); }
+
+    /* Output pane */
+    #output {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font: 11px/1.5 'Consolas', 'Fira Code', monospace;
+      padding: 8px;
+      max-height: 220px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: #c9d1d9;
+      flex: 1;
+    }
+    #output .log-error { color: var(--danger); }
+    #output .log-warn  { color: var(--warn); }
+    #output .log-ok    { color: var(--accent2); }
+
+    /* Screenshot preview */
+    #screenshot-preview {
+      width: 100%;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      display: none;
+    }
+    #screenshot-preview.visible { display: block; }
+
+    label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 2px; }
+    .field { display: flex; flex-direction: column; gap: 3px; }
+
+    /* Marks legend */
+    #marks-count {
+      font-size: 11px;
+      color: var(--muted);
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <svg class="logo" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="28" height="28" rx="6" fill="#1a73e8"/>
+    <path d="M7 20 L14 8 L21 20" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="14" cy="8" r="2" fill="white"/>
+  </svg>
+  <h1>OpenClaw</h1>
+  <span id="status-badge">connecting…</span>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn active" data-tab="control">Control</button>
+  <button class="tab-btn" data-tab="dom">DOM</button>
+  <button class="tab-btn" data-tab="eval">Eval</button>
+  <button class="tab-btn" data-tab="logs">Logs</button>
+</div>
+
+<!-- ── Control Tab ─────────────────────────────────────────────────────────── -->
+<div class="tab-panel active" id="tab-control">
+  <div class="btn-row">
+    <button class="btn primary" id="btn-screenshot">📷 Screenshot</button>
+    <button class="btn" id="btn-marks">🏷 Set Marks</button>
+    <button class="btn" id="btn-clear-marks">✕ Clear Marks</button>
+  </div>
+  <span id="marks-count"></span>
+  <img id="screenshot-preview" alt="Screenshot preview" />
+  <div class="btn-row" id="screenshot-actions" style="display:none;">
+    <button class="btn success" id="btn-download-screenshot">⬇ Download</button>
+  </div>
+</div>
+
+<!-- ── DOM Tab ──────────────────────────────────────────────────────────────── -->
+<div class="tab-panel" id="tab-dom">
+  <div class="btn-row">
+    <button class="btn primary" id="btn-dom-snapshot">📄 DOM Snapshot</button>
+    <button class="btn" id="btn-a11y-tree">♿ A11y Tree</button>
+    <button class="btn" id="btn-page-info">ℹ Page Info</button>
+  </div>
+  <div class="field">
+    <label>CSS selector (find elements)</label>
+    <input type="text" id="find-selector" placeholder=".btn, a[href], input" />
+  </div>
+  <div class="btn-row">
+    <button class="btn" id="btn-find">🔍 Find</button>
+  </div>
+  <div id="output">Ready.</div>
+</div>
+
+<!-- ── Eval Tab ─────────────────────────────────────────────────────────────── -->
+<div class="tab-panel" id="tab-eval">
+  <div class="field">
+    <label>JavaScript expression</label>
+    <textarea id="eval-input" rows="5" placeholder="document.title"></textarea>
+  </div>
+  <div class="btn-row">
+    <button class="btn primary" id="btn-eval">▶ Run</button>
+    <button class="btn" id="btn-eval-inject">🌐 Run in Page</button>
+  </div>
+  <div id="eval-output" class="output" style="
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font: 11px/1.5 'Consolas', monospace;
+    padding: 8px;
+    max-height: 150px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+    color: #c9d1d9;
+  ">Result will appear here.</div>
+</div>
+
+<!-- ── Logs Tab ─────────────────────────────────────────────────────────────── -->
+<div class="tab-panel" id="tab-logs">
+  <div class="btn-row">
+    <button class="btn danger" id="btn-clear-logs">🗑 Clear</button>
+  </div>
+  <div id="log-output" style="
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font: 11px/1.5 'Consolas', monospace;
+    padding: 8px;
+    max-height: 300px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+    color: #c9d1d9;
+  ">No logs yet.</div>
+</div>
+
+<script src="popup.js"></script>
+</body>
+</html>
